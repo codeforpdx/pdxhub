@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.env.*
+.git
+.gitignore
+.next
+.vercel
+bun.lock
+coverage
+node_modules
+npm-debug.log*
+out
+package-lock.json

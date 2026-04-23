@@ -1,0 +1,11 @@
+{
+  "name": "PDX Hub — Portland Live Map",
+  "short_name": "PDX Hub",
+  "description": "Real-time Portland public data on an interactive map.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f4f0",
+  "theme_color": "#e85d3c",
+  "orientation": "any",
+  "categories": ["navigation", "news", "utilities"]
+}

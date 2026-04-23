@@ -1,0 +1,72 @@
+@import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+:root {
+  --sidebar-width: 380px;
+  --header-height: 56px;
+  --background: #f5f4f0;
+  --foreground: #1a1a1a;
+  --surface: #ffffff;
+  --border: #e2e0db;
+  --muted: #737069;
+  --accent: #e85d3c;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Map container fills its parent */
+.maplibregl-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Popup styling */
+.maplibregl-popup-content {
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+  font-size: 13px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  max-width: 280px;
+}
+
+.maplibregl-popup-close-button {
+  font-size: 18px;
+  padding: 4px 8px;
+  color: var(--muted);
+}
+
+/* Scrollbar for sidebar */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
