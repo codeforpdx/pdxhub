@@ -3,6 +3,8 @@
 Real-time public data for Portland, OR on an interactive map. Aggregates police/fire dispatch, NWS weather alerts, TriMet transit alerts, bridge lifts, road closures, water advisories, and nine GIS safety overlays from City of Portland open data sources.
 <img width="1864" height="1287" alt="Screenshot 2026-04-08 at 4 52 59 PM" src="https://github.com/user-attachments/assets/4c2756b9-e9a9-442a-8b9b-3a50ab88695b" />
 
+[Project Kickoff and Tech specs](https://docs.google.com/document/d/1I12H432P9a0WQ-T0bIfzQcG93HMn0Mmt5Gw2yF5-2-E/edit?tab=t.0#heading=h.roigb9cals9k)
+
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router, TypeScript)
@@ -23,7 +25,7 @@ Real-time public data for Portland, OR on an interactive map. Aggregates police/
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/Jared-Krajewski/pdxHub.git
+git clone https://github.com/codeforpdx/pdxhub.git
 cd pdxHub
 bun install        # or: npm install
 ```
@@ -213,3 +215,16 @@ make clobber       # Full Docker cleanup including BuildKit state (global, destr
 ## PWA
 
 The app ships a service worker (`public/sw.js`) that is only registered in production builds. In development the service worker is automatically unregistered to prevent stale chunk errors.
+
+---
+
+## Contributing
+
+PDX Hub is an open-source [Code PDX](https://www.codepdx.org/) project and welcomes contributions of all sizes. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide covering:
+
+- Setting up a local or Docker development environment
+- Branch naming conventions and the PR workflow
+- Coding standards and data source rules
+- How to file bug reports, feature requests, and enhancement requests
+
+If you're new to the project, look for issues labeled `good first issue` on the [issues page](https://github.com/codeforpdx/pdxhub/issues).

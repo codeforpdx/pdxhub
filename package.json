@@ -7,7 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "prettier:check": "prettier --check \"src/**/*.{js,ts,tsx,jsx,css}\"",
+    "prettier:run": "prettier --write \"src/**/*.{js,ts,tsx,jsx,css}\"",
+    "prepare": "husky",
     "clean-dev": "pkill -f 'node .*next dev' || true; pkill -f 'bun run dev' || true; sleep 1; rm -rf .next; bun run dev"
+  },
+  "lint-staged": {
+    "src/**/*.{js,css,ts,tsx,jsx}": [
+      "npm run lint:fix",
+      "npm run prettier:run"
+    ]
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
@@ -27,6 +37,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
