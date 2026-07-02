@@ -1,0 +1,20 @@
+---
+name: Lint Actions
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches: [main, development]
+
+jobs:
+  lint:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node_version: [24.x]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: echo "Running pdxhub actionslint for branch ${{ github.ref_name }}"
+      - uses: actions/checkout@v4
+      - name: Actions Lint
+        uses: raven-actions/actionlint@v2
