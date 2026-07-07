@@ -13,25 +13,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        node_version: [24.x]
     runs-on: ${{ matrix.os }}
     steps:
       - run: echo "Running pdxhub ci for branch ${{ github.ref_name }}"
       - uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node_version }}
-      - name: Setup PR Cache
-        uses: actions/cache@v4
-        if: github.event_name == 'pull_request'
-        with:
-          path: ~/.npm
-          key: ${{ github.ref_name }}-${{ hashFiles('**/package-lock.json') }}
-      - run: npm ci
-      - run: npx tsc --noEmit
-      - run: npm run lint
-      - run: npm run build
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run build
   docker_ci:
     strategy:
       matrix:
@@ -42,4 +31,4 @@ jobs:
       - uses: actions/checkout@v4
       - name: Setup Docker
         uses: docker/setup-docker-action@v5
-      - run: docker build
+      - run: docker build .
