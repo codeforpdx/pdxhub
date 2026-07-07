@@ -184,6 +184,11 @@ export default function MapView({
       .addTo(map);
     popupRef.current = popup;
 
+    // Marker pins raise their own z-index on hover (up to 10); keep the popup
+    // stacked above them so pins don't render on top of the open popup.
+    const popupEl = popup.getElement();
+    if (popupEl) popupEl.style.zIndex = "20";
+
     // Camera popups show a live snapshot: swap in a fallback when it fails to
     // load and refresh the image on an interval while the popup stays open.
     if (event.imageUrl) {
