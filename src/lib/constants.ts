@@ -21,8 +21,7 @@ export const MAP_LAYERS: LayerStyle[] = [
   {
     id: "carto-voyager",
     label: "Street Map",
-    tileUrl:
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    tileUrl: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
     attribution:
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
   },
@@ -119,14 +118,23 @@ export const CATEGORY_FILTERS: CategoryFilter[] = [
     refreshMs: 30 * 60 * 1000,
     staleNote: "Updates every 30 min",
   },
+  {
+    id: "cameras",
+    label: "Traffic Cameras",
+    color: "#475569",
+    icon: "Camera",
+    enabled: true,
+    // Camera locations rarely change; the live image refreshes client-side.
+    refreshMs: 24 * 60 * 60 * 1000,
+    staleNote: "Live TripCheck webcams",
+  },
 ];
 
 export const MAP_OVERLAYS: MapOverlayConfig[] = [
   {
     id: "cip",
     label: "Capital Projects",
-    description:
-      "Active city capital improvement work in the public right-of-way.",
+    description: "Active city capital improvement work in the public right-of-way.",
     color: "#c2410c",
   },
   {
@@ -139,8 +147,7 @@ export const MAP_OVERLAYS: MapOverlayConfig[] = [
   {
     id: "beecn",
     label: "Earthquake Nodes",
-    description:
-      "BEECN neighborhood communication sites for major earthquake response.",
+    description: "BEECN neighborhood communication sites for major earthquake response.",
     color: "#15803d",
   },
   {
@@ -153,15 +160,13 @@ export const MAP_OVERLAYS: MapOverlayConfig[] = [
   {
     id: "highcrash",
     label: "High Crash Intersections",
-    description:
-      "Portland intersections on PBOT's High Crash Network for safety awareness.",
+    description: "Portland intersections on PBOT's High Crash Network for safety awareness.",
     color: "#b91c1c",
   },
   {
     id: "highcrashstreets",
     label: "High Crash Streets",
-    description:
-      "PBOT high-crash corridors for drivers, pedestrians, and bicyclists.",
+    description: "PBOT high-crash corridors for drivers, pedestrians, and bicyclists.",
     color: "#0f766e",
   },
   {
@@ -174,8 +179,7 @@ export const MAP_OVERLAYS: MapOverlayConfig[] = [
   {
     id: "potholes",
     label: "Pothole Reports",
-    description:
-      "Live PBOT pothole reports that are still open or in progress.",
+    description: "Live PBOT pothole reports that are still open or in progress.",
     color: "#7c2d12",
   },
   {
@@ -243,5 +247,7 @@ export function categoryLegendLabel(category: EventCategory): string {
       return "Waterworks";
     case "advisories":
       return "Advisories";
+    case "cameras":
+      return "Cameras";
   }
 }

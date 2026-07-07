@@ -46,11 +46,10 @@ export default function MapView({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  const cameraImageTimerRef = useRef<number | null>(null);
   const searchMarkerRef = useRef<maplibregl.Marker | null>(null);
   const overlayRequestsRef = useRef<Set<MapOverlayId>>(new Set());
-  const overlayCacheRef = useRef<Map<string, OverlayFeatureCollection>>(
-    new Map(),
-  );
+  const overlayCacheRef = useRef<Map<string, OverlayFeatureCollection>>(new Map());
   const floodRequestKeyRef = useRef<string | null>(null);
   const floodViewportKeyRef = useRef<string | null>(null);
   const [overlayData, setOverlayData] = useState<
@@ -62,10 +61,7 @@ export default function MapView({
     () => new Set(filters.filter((f) => f.enabled).map((f) => f.id)),
     [filters],
   );
-  const activeOverlaySet = useMemo(
-    () => new Set(activeOverlayIds),
-    [activeOverlayIds],
-  );
+  const activeOverlaySet = useMemo(() => new Set(activeOverlayIds), [activeOverlayIds]);
 
   // Always-current refs so the selection fly-to effect only fires on real selection
   // changes and not on every SWR refresh or filter toggle.
@@ -88,10 +84,7 @@ export default function MapView({
       attributionControl: false,
     });
 
-    map.addControl(
-      new maplibregl.AttributionControl({ compact: true }),
-      "bottom-right",
-    );
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-right");
     map.addControl(new maplibregl.NavigationControl(), "bottom-right");
     map.addControl(
       new maplibregl.GeolocateControl({
@@ -156,6 +149,12 @@ export default function MapView({
   // Using refs for events/enabledCategories means filter toggles and SWR
   // refreshes will NOT re-trigger this effect and will NOT move the map.
   useEffect(() => {
+    // Any previously running camera-image refresh belongs to the old popup.
+    if (cameraImageTimerRef.current !== null) {
+      window.clearInterval(cameraImageTimerRef.current);
+      cameraImageTimerRef.current = null;
+    }
+
     if (!selectedEventId) {
       popupRef.current?.remove();
       popupRef.current = null;
@@ -179,10 +178,55 @@ export default function MapView({
     });
 
     popupRef.current?.remove();
-    popupRef.current = new maplibregl.Popup({ offset: 24, closeButton: true })
+    const popup = new maplibregl.Popup({ offset: 24, closeButton: true })
       .setLngLat([event.lng, event.lat])
       .setHTML(buildPopupHTML(event))
       .addTo(map);
+    popupRef.current = popup;
+
+    // Camera popups show a live snapshot: swap in a fallback when it fails to
+    // load and refresh the image on an interval while the popup stays open.
+    if (event.imageUrl) {
+      const root = popup.getElement();
+      const img = root?.querySelector<HTMLImageElement>("[data-cctv-image]");
+      const fallback = root?.querySelector<HTMLElement>("[data-cctv-fallback]");
+      const imageUrl = event.imageUrl;
+
+      if (img) {
+        img.addEventListener("error", () => {
+          img.style.display = "none";
+          if (fallback) fallback.style.display = "block";
+        });
+        img.addEventListener("load", () => {
+          img.style.display = "block";
+          if (fallback) fallback.style.display = "none";
+        });
+        // Handle a load that already failed before listeners were attached.
+        if (img.complete && img.naturalWidth === 0) {
+          img.style.display = "none";
+          if (fallback) fallback.style.display = "block";
+        }
+
+        cameraImageTimerRef.current = window.setInterval(() => {
+          // Self-clean if the popup was dismissed (e.g. via its close button).
+          if (!img.isConnected) {
+            if (cameraImageTimerRef.current !== null) {
+              window.clearInterval(cameraImageTimerRef.current);
+              cameraImageTimerRef.current = null;
+            }
+            return;
+          }
+          img.src = bustedImageUrl(imageUrl);
+        }, 30_000);
+      }
+    }
+
+    return () => {
+      if (cameraImageTimerRef.current !== null) {
+        window.clearInterval(cameraImageTimerRef.current);
+        cameraImageTimerRef.current = null;
+      }
+    };
   }, [selectedEventId]);
 
   // ── Close popup only when the selected event's category is filtered out ─────
@@ -193,6 +237,10 @@ export default function MapView({
     if (!event || !enabledCategories.has(event.category)) {
       popupRef.current.remove();
       popupRef.current = null;
+      if (cameraImageTimerRef.current !== null) {
+        window.clearInterval(cameraImageTimerRef.current);
+        cameraImageTimerRef.current = null;
+      }
     }
   }, [enabledCategories, selectedEventId, events]);
 
@@ -218,9 +266,7 @@ export default function MapView({
       });
     }
 
-    searchMarkerRef.current
-      .setLngLat([flyToLocation.lng, flyToLocation.lat])
-      .addTo(map);
+    searchMarkerRef.current.setLngLat([flyToLocation.lng, flyToLocation.lat]).addTo(map);
 
     map.flyTo({
       center: [flyToLocation.lng, flyToLocation.lat],
@@ -230,9 +276,7 @@ export default function MapView({
 
     searchMarkerRef.current
       .setPopup(
-        new maplibregl.Popup({ offset: 18, closeButton: false }).setText(
-          flyToLocation.displayName,
-        ),
+        new maplibregl.Popup({ offset: 18, closeButton: false }).setText(flyToLocation.displayName),
       )
       .togglePopup();
   }, [flyToLocation]);
@@ -384,20 +428,12 @@ export default function MapView({
     };
   }, [activeLayer.id, activeOverlaySet, overlayData]);
 
-  return (
-    <div
-      ref={containerRef}
-      className="w-full h-full"
-      aria-label="Portland incident map"
-    />
-  );
+  return <div ref={containerRef} className="w-full h-full" aria-label="Portland incident map" />;
 }
 
 const ALL_OVERLAY_IDS = MAP_OVERLAYS.map((overlay) => overlay.id);
 
-function buildFloodOverlayRequest(
-  map: maplibregl.Map,
-): { key: string; url: string } | null {
+function buildFloodOverlayRequest(map: maplibregl.Map): { key: string; url: string } | null {
   const zoom = map.getZoom();
 
   if (zoom < FLOOD_OVERLAY_MIN_ZOOM) {
@@ -412,10 +448,7 @@ function buildFloodOverlayRequest(
     snapCoordinate(bounds.getNorth(), FLOOD_OVERLAY_BBOX_PRECISION),
   ];
   const bboxParam = bbox.join(",");
-  const zoomBucket = Math.max(
-    FLOOD_OVERLAY_MIN_ZOOM,
-    Math.floor(zoom),
-  );
+  const zoomBucket = Math.max(FLOOD_OVERLAY_MIN_ZOOM, Math.floor(zoom));
 
   return {
     key: `flood:${bboxParam}:${zoomBucket}`,
@@ -442,9 +475,7 @@ function syncMapOverlays(
     }
 
     const sourceId = getOverlaySourceId(overlayId);
-    const existingSource = map.getSource(sourceId) as
-      | maplibregl.GeoJSONSource
-      | undefined;
+    const existingSource = map.getSource(sourceId) as maplibregl.GeoJSONSource | undefined;
 
     if (existingSource) {
       existingSource.setData(data as never);
@@ -459,11 +490,7 @@ function syncMapOverlays(
   }
 }
 
-function ensureOverlayLayers(
-  map: maplibregl.Map,
-  overlayId: MapOverlayId,
-  sourceId: string,
-) {
+function ensureOverlayLayers(map: maplibregl.Map, overlayId: MapOverlayId, sourceId: string) {
   if (overlayId === "cip") {
     ensureLayer(map, {
       id: getOverlayLayerId(overlayId, "fill"),
@@ -619,13 +646,7 @@ function ensureOverlayLayers(
       type: "circle",
       source: sourceId,
       paint: {
-        "circle-color": [
-          "match",
-          ["get", "status"],
-          "In Progress",
-          "#b45309",
-          "#7c2d12",
-        ],
+        "circle-color": ["match", ["get", "status"], "In Progress", "#b45309", "#7c2d12"],
         "circle-radius": 4.5,
         "circle-opacity": 0.9,
         "circle-stroke-width": 1.5,
@@ -717,10 +738,7 @@ function removeOverlay(map: maplibregl.Map, overlayId: MapOverlayId) {
   }
 }
 
-function ensureLayer(
-  map: maplibregl.Map,
-  layer: maplibregl.LayerSpecification,
-) {
+function ensureLayer(map: maplibregl.Map, layer: maplibregl.LayerSpecification) {
   if (!map.getLayer(layer.id)) {
     map.addLayer(layer);
   }
@@ -838,9 +856,16 @@ function getCategoryIconSvg(category: string): string {
     health: `<path d="M11 2v2"/><path d="M5 2v2"/><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1"/><path d="M8 15a6 6 0 0 0 12 0v-3"/><circle cx="20" cy="10" r="2"/>`,
     waterworks: `<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z"/>`,
     advisories: `<path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97"/>`,
+    cameras: `<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>`,
   };
   const pathData = paths[category] ?? `<circle cx="12" cy="12" r="4"/>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${pathData}</svg>`;
+}
+
+// Traffic camera images are static URLs whose content updates; a timestamp
+// query forces the browser to fetch the latest snapshot instead of the cache.
+function bustedImageUrl(url: string): string {
+  return `${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`;
 }
 
 function buildPopupHTML(event: IncidentEvent): string {
@@ -852,8 +877,16 @@ function buildPopupHTML(event: IncidentEvent): string {
     minute: "2-digit",
   });
 
+  const imageHtml = event.imageUrl
+    ? `<div style="margin-bottom:8px;">
+        <img data-cctv-image src="${escapeHtml(bustedImageUrl(event.imageUrl))}" alt="Live camera view: ${escapeHtml(event.title)}" style="width:100%; border-radius:6px; display:block;" />
+        <div data-cctv-fallback role="status" style="display:none; padding:16px 8px; text-align:center; font-size:12px; color:#888; background:#f3f4f6; border-radius:6px;">Camera image unavailable</div>
+      </div>`
+    : "";
+
   return `
-    <div style="font-family: system-ui, sans-serif; min-width: 200px;">
+    <div style="font-family: system-ui, sans-serif; min-width: 200px; max-width: 280px;">
+      ${imageHtml}
       <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
         <span style="
           display:inline-block;

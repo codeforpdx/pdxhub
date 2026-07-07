@@ -4,6 +4,7 @@ import type {
   NWSFeature,
   SocrataRecord,
   TriMetAlert,
+  TripCheckCamera,
   TripCheckIncident,
   WaterAdvisoryFeature,
   WaterworksFeature,
@@ -19,9 +20,7 @@ import { nwsSeverityToSeverity, PDX_CENTER } from "@/lib/constants";
  * Portland Police Bureau CAD incidents (Socrata)
  * Dataset: https://www.portlandoregon.gov/police/71978
  */
-export function normalizePoliceRecords(
-  records: SocrataRecord[],
-): IncidentEvent[] {
+export function normalizePoliceRecords(records: SocrataRecord[]): IncidentEvent[] {
   return records
     .filter((r) => r.x_coordinate && r.y_coordinate)
     .map((r): IncidentEvent => {
@@ -30,19 +29,14 @@ export function normalizePoliceRecords(
       return {
         id: `police-${r.case_id ?? r.master_incident_number ?? Math.random()}`,
         category: "police",
-        severity: categorizePoliceSeverity(
-          String(r.offense_type ?? r.final_case_type ?? ""),
-        ),
+        severity: categorizePoliceSeverity(String(r.offense_type ?? r.final_case_type ?? "")),
         title: String(r.offense_type ?? r.final_case_type ?? "Police Incident"),
         description:
-          [r.neighborhood, r.district_name].filter(Boolean).join(" · ") ||
-          "See source for details",
+          [r.neighborhood, r.district_name].filter(Boolean).join(" · ") || "See source for details",
         address: String(r.address ?? r.hundred_block_location ?? ""),
         lat,
         lng,
-        timestamp: String(
-          r.call_date ?? r.occur_date ?? new Date().toISOString(),
-        ),
+        timestamp: String(r.call_date ?? r.occur_date ?? new Date().toISOString()),
         source: "Portland Police Bureau",
         sourceUrl: "https://www.portlandoregon.gov/police/",
         raw: r,
@@ -52,10 +46,8 @@ export function normalizePoliceRecords(
 
 function categorizePoliceSeverity(offenseType: string): EventSeverity {
   const t = offenseType.toLowerCase();
-  if (t.includes("homicide") || t.includes("robbery") || t.includes("assault"))
-    return "critical";
-  if (t.includes("burglary") || t.includes("theft") || t.includes("vehicle"))
-    return "high";
+  if (t.includes("homicide") || t.includes("robbery") || t.includes("assault")) return "critical";
+  if (t.includes("burglary") || t.includes("theft") || t.includes("vehicle")) return "high";
   if (t.includes("disturbance") || t.includes("suspicious")) return "medium";
   return "low";
 }
@@ -63,9 +55,7 @@ function categorizePoliceSeverity(offenseType: string): EventSeverity {
 /**
  * Portland Fire & Rescue dispatch (Socrata)
  */
-export function normalizeFireRecords(
-  records: SocrataRecord[],
-): IncidentEvent[] {
+export function normalizeFireRecords(records: SocrataRecord[]): IncidentEvent[] {
   return records
     .filter((r) => r.x_coordinate && r.y_coordinate)
     .map((r): IncidentEvent => {
@@ -80,9 +70,7 @@ export function normalizeFireRecords(
         address: String(r.address ?? ""),
         lat,
         lng,
-        timestamp: String(
-          r.alarm_date ?? r.inc_date ?? new Date().toISOString(),
-        ),
+        timestamp: String(r.alarm_date ?? r.inc_date ?? new Date().toISOString()),
         source: "Portland Fire & Rescue",
         sourceUrl: "https://www.portland.gov/fire",
         raw: r,
@@ -102,9 +90,7 @@ function categorizeFireSeverity(type: string): EventSeverity {
  * NWS Weather Alerts
  * Coordinates for area-based alerts default to downtown Portland
  */
-export function normalizeWeatherAlerts(
-  features: NWSFeature[],
-): IncidentEvent[] {
+export function normalizeWeatherAlerts(features: NWSFeature[]): IncidentEvent[] {
   return features.map((f): IncidentEvent => {
     const coords = f.geometry?.coordinates ?? PDX_CENTER;
     return {
@@ -112,8 +98,7 @@ export function normalizeWeatherAlerts(
       category: "weather",
       severity: nwsSeverityToSeverity(f.properties.severity),
       title: f.properties.event,
-      description:
-        f.properties.headline ?? f.properties.description?.slice(0, 200) ?? "",
+      description: f.properties.headline ?? f.properties.description?.slice(0, 200) ?? "",
       lat: coords[1],
       lng: coords[0],
       timestamp: f.properties.onset ?? new Date().toISOString(),
@@ -134,17 +119,12 @@ export function normalizeTransitAlerts(alerts: TriMetAlert[]): IncidentEvent[] {
       id: `transit-${a.id}`,
       category: "transit",
       severity: "medium",
-      title:
-        a.header_text?.trim() ||
-        a.description_text?.trim() ||
-        "TriMet Service Alert",
+      title: a.header_text?.trim() || a.description_text?.trim() || "TriMet Service Alert",
       description: a.description_text ?? a.effect ?? "",
       lat: a.lat ?? PDX_CENTER[1],
       lng: a.lng ?? PDX_CENTER[0],
       timestamp: a.start
-        ? new Date(
-            a.start > 10_000_000_000 ? a.start : a.start * 1000,
-          ).toISOString()
+        ? new Date(a.start > 10_000_000_000 ? a.start : a.start * 1000).toISOString()
         : new Date().toISOString(),
       source: "TriMet",
       sourceUrl: a.url ?? "https://trimet.org/alerts/",
@@ -156,9 +136,7 @@ export function normalizeTransitAlerts(alerts: TriMetAlert[]): IncidentEvent[] {
 /**
  * Oregon TripCheck road incidents
  */
-export function normalizeRoadIncidents(
-  incidents: TripCheckIncident[],
-): IncidentEvent[] {
+export function normalizeRoadIncidents(incidents: TripCheckIncident[]): IncidentEvent[] {
   return incidents
     .filter((i) => i.lat && i.lon)
     .map(
@@ -180,26 +158,52 @@ export function normalizeRoadIncidents(
 }
 
 /**
+ * Oregon TripCheck CCTV traffic cameras
+ */
+export function normalizeCameras(cameras: TripCheckCamera[]): IncidentEvent[] {
+  return cameras
+    .filter((c) => c.lat && c.lon)
+    .map((c): IncidentEvent => {
+      // TripCheck image filenames embed a point id (..._pid<N>.jpg) that also
+      // addresses the camera's own page via the View-Custom-Cameras view.
+      const pid = c.imageUrl?.match(/_pid(\d+)\.jpg/i)?.[1];
+      const sourceUrl = pid
+        ? `https://tripcheck.com/Pages/View-Custom-Cameras?CamIds=${pid}`
+        : "https://tripcheck.com/Pages/Custom-Cameras";
+
+      return {
+        id: `camera-${c.id}`,
+        category: "cameras",
+        severity: "low",
+        title: c.name || "Traffic Camera",
+        description: c.description ?? "",
+        address: c.description,
+        lat: c.lat!,
+        lng: c.lon!,
+        timestamp: new Date().toISOString(),
+        source: "Oregon TripCheck CCTV",
+        sourceUrl,
+        imageUrl: c.imageUrl,
+        raw: c,
+      };
+    });
+}
+
+/**
  * Bridge lift events — no standard open dataset yet; placeholder normalizer
  * for Portland Maps / PBOT API responses.
  */
-export function normalizeBridgeLifts(
-  records: SocrataRecord[],
-): IncidentEvent[] {
+export function normalizeBridgeLifts(records: SocrataRecord[]): IncidentEvent[] {
   return records.map(
     (r): IncidentEvent => ({
       id: `bridge-${r.bridge_id ?? r.id ?? Math.random()}`,
       category: "bridge",
       severity: "low",
       title: `${r.bridge_name ?? "Bridge"} Lift`,
-      description: r.vessel_name
-        ? `Vessel: ${r.vessel_name}`
-        : "Scheduled lift",
+      description: r.vessel_name ? `Vessel: ${r.vessel_name}` : "Scheduled lift",
       lat: parseFloat(String(r.lat ?? "45.5231")),
       lng: parseFloat(String(r.lon ?? "-122.6765")),
-      timestamp: String(
-        r.start_time ?? r.open_time ?? new Date().toISOString(),
-      ),
+      timestamp: String(r.start_time ?? r.open_time ?? new Date().toISOString()),
       source: "Portland Bureau of Transportation",
       sourceUrl: "https://www.portland.gov/transportation",
       raw: r,
@@ -207,9 +211,7 @@ export function normalizeBridgeLifts(
   );
 }
 
-export function normalizeWaterworksProjects(
-  features: WaterworksFeature[],
-): IncidentEvent[] {
+export function normalizeWaterworksProjects(features: WaterworksFeature[]): IncidentEvent[] {
   return features
     .map((feature, index): IncidentEvent | null => {
       const coordinate = getFeatureCoordinate(feature.geometry);
@@ -234,27 +236,21 @@ export function normalizeWaterworksProjects(
       return {
         id: `waterworks-${toText(properties?.id) ?? path ?? String(index)}`,
         category: "waterworks",
-        severity: titleText.match(/shutdown|emergency|outage|interruption/)
-          ? "high"
-          : "medium",
+        severity: titleText.match(/shutdown|emergency|outage|interruption/) ? "high" : "medium",
         title: name,
         description,
         lat: coordinate.lat,
         lng: coordinate.lng,
         timestamp: extractWaterworksTimestamp(properties),
         source: "Portland Water Bureau",
-        sourceUrl: path
-          ? new URL(path, "https://www.portland.gov").toString()
-          : undefined,
+        sourceUrl: path ? new URL(path, "https://www.portland.gov").toString() : undefined,
         raw: feature,
       };
     })
     .filter((event): event is IncidentEvent => event !== null);
 }
 
-export function normalizeWaterAdvisories(
-  features: WaterAdvisoryFeature[],
-): IncidentEvent[] {
+export function normalizeWaterAdvisories(features: WaterAdvisoryFeature[]): IncidentEvent[] {
   return features
     .map((feature, index): IncidentEvent | null => {
       const attributes = feature.attributes;
@@ -284,8 +280,7 @@ export function normalizeWaterAdvisories(
         id: `advisory-${toText(attributes?.ObjectId) ?? toText(attributes?.PWS_Number) ?? String(index)}`,
         category: "advisories",
         severity:
-          searchText.includes("do not drink") ||
-          searchText.includes("do not use")
+          searchText.includes("do not drink") || searchText.includes("do not use")
             ? "critical"
             : searchText.includes("boil")
               ? "high"
@@ -350,9 +345,7 @@ function pickText(...values: Array<string | undefined>): string {
   return values.find((value) => value && value.trim().length > 0) ?? "";
 }
 
-function extractWaterworksTimestamp(
-  properties: WaterworksFeature["properties"],
-): string {
+function extractWaterworksTimestamp(properties: WaterworksFeature["properties"]): string {
   const directDate = toText(properties?.date);
   const description = toText(properties?.description);
   const candidates = [
@@ -393,9 +386,7 @@ function getFeatureCoordinate(
 
   const coordinates =
     geometry.type === "GeometryCollection"
-      ? (geometry.geometries ?? []).flatMap((item) =>
-          collectCoordinates(item.coordinates),
-        )
+      ? (geometry.geometries ?? []).flatMap((item) => collectCoordinates(item.coordinates))
       : collectCoordinates(geometry.coordinates);
 
   const pairs = coordinates.filter(
@@ -431,11 +422,7 @@ function collectCoordinates(value: unknown): Array<[number, number]> {
     return [];
   }
 
-  if (
-    value.length >= 2 &&
-    typeof value[0] === "number" &&
-    typeof value[1] === "number"
-  ) {
+  if (value.length >= 2 && typeof value[0] === "number" && typeof value[1] === "number") {
     return [[value[0], value[1]]];
   }
 
