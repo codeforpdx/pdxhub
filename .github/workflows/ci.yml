@@ -1,6 +1,9 @@
 ---
 name: CI
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     types: [opened, reopened, synchronize]
@@ -10,10 +13,7 @@ on:
 
 jobs:
   ci:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - run: echo "Running pdxhub ci for branch ${{ github.ref_name }}"
       - uses: actions/checkout@v4
@@ -22,10 +22,7 @@ jobs:
       - run: bun run lint
       - run: bun run build
   docker_ci:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - run: echo "Checking the Docker Build for branch ${{ github.ref_name }}"
       - uses: actions/checkout@v4

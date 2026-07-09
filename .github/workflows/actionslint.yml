@@ -1,6 +1,9 @@
 ---
 name: Lint Actions
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     types: [opened, reopened, synchronize]
@@ -8,11 +11,7 @@ on:
 
 jobs:
   lint:
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        node_version: [24.x]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - run: echo "Running pdxhub actionslint for branch ${{ github.ref_name }}"
       - uses: actions/checkout@v4
