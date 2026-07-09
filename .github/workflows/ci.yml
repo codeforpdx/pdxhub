@@ -1,0 +1,31 @@
+---
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches: [main, development]
+  push:
+    branches: [main, development]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Running pdxhub ci for branch ${{ github.ref_name }}"
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run build
+  docker_ci:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Checking the Docker Build for branch ${{ github.ref_name }}"
+      - uses: actions/checkout@v4
+      - name: Setup Docker
+        uses: docker/setup-docker-action@v5
+      - run: docker build .
