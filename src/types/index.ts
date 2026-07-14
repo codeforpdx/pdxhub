@@ -14,7 +14,8 @@ export type EventCategory =
   | "road"
   | "health"
   | "waterworks"
-  | "advisories";
+  | "advisories"
+  | "cameras";
 
 export type EventSeverity = "low" | "medium" | "high" | "critical";
 
@@ -30,6 +31,7 @@ export interface IncidentEvent {
   timestamp: string; // ISO 8601
   source: string; // human-readable source name, e.g. "Portland Police Bureau"
   sourceUrl?: string;
+  imageUrl?: string; // live snapshot URL, e.g. TripCheck traffic camera image
   raw?: unknown; // original API payload, kept for debugging
 }
 
@@ -174,6 +176,16 @@ export interface TripCheckIncident {
   lat?: number;
   lon?: number;
   startTime?: string;
+}
+
+// Oregon TripCheck CCTV traffic cameras
+export interface TripCheckCamera {
+  id: string;
+  name: string;
+  description?: string;
+  lat?: number;
+  lon?: number;
+  imageUrl?: string;
 }
 
 export interface WaterworksGeometry {

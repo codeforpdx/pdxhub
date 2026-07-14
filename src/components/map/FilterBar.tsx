@@ -12,6 +12,7 @@ import {
   Stethoscope,
   Wrench,
   Droplets,
+  Camera,
 } from "lucide-react";
 import type { LucideProps } from "lucide-react";
 import type { ElementType } from "react";
@@ -32,13 +33,10 @@ const ICONS: Record<string, ElementType<LucideProps>> = {
   Stethoscope,
   Wrench,
   Droplets,
+  Camera,
 };
 
-export default function FilterBar({
-  filters,
-  onToggle,
-  counts = {},
-}: FilterBarProps) {
+export default function FilterBar({ filters, onToggle, counts = {} }: FilterBarProps) {
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       {filters.map((filter) => {
@@ -56,18 +54,14 @@ export default function FilterBar({
                 : "bg-white text-muted border-border hover:border-gray-400",
             )}
             style={
-              filter.enabled
-                ? { backgroundColor: filter.color, borderColor: filter.color }
-                : {}
+              filter.enabled ? { backgroundColor: filter.color, borderColor: filter.color } : {}
             }
             aria-pressed={filter.enabled}
           >
             <Icon size={12} />
             <span className="hidden sm:inline">{filter.label}</span>
             {filter.enabled && (counts[filter.id] ?? 0) > 0 && (
-              <span className="ml-0.5 font-semibold tabular-nums">
-                {counts[filter.id]}
-              </span>
+              <span className="ml-0.5 font-semibold tabular-nums">{counts[filter.id]}</span>
             )}
           </button>
         );

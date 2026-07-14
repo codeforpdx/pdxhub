@@ -32,9 +32,7 @@ function useSource(path: string, refreshMs: number) {
   });
 }
 
-const REFRESH = Object.fromEntries(
-  CATEGORY_FILTERS.map((f) => [f.id, f.refreshMs]),
-);
+const REFRESH = Object.fromEntries(CATEGORY_FILTERS.map((f) => [f.id, f.refreshMs]));
 
 export interface UseEventsResult {
   events: IncidentEvent[];
@@ -65,6 +63,7 @@ export function useEvents(): UseEventsResult {
   const health = useSource("/api/health", REFRESH.health);
   const waterworks = useSource("/api/waterworks", REFRESH.waterworks);
   const advisories = useSource("/api/advisories", REFRESH.advisories);
+  const cameras = useSource("/api/cameras", REFRESH.cameras);
 
   const swrSources = [
     { id: "police", state: police },
@@ -76,6 +75,7 @@ export function useEvents(): UseEventsResult {
     { id: "health", state: health },
     { id: "waterworks", state: waterworks },
     { id: "advisories", state: advisories },
+    { id: "cameras", state: cameras },
   ] as const;
 
   const sourceStates: SourceStatus[] = swrSources.map(({ id, state }) => ({
@@ -83,42 +83,30 @@ export function useEvents(): UseEventsResult {
     label: categoryLabel(id),
     count: state.data?.data.length ?? 0,
     loading: state.isLoading,
-    error:
-      state.error instanceof Error ? state.error.message : state.data?.error,
+    error: state.error instanceof Error ? state.error.message : state.data?.error,
     fetchedAt: state.data?.fetchedAt,
   }));
 
   const loading = sourceStates.every(
-    (source) =>
-      source.loading &&
-      !source.error &&
-      source.count === 0 &&
-      !source.fetchedAt,
+    (source) => source.loading && !source.error && source.count === 0 && !source.fetchedAt,
   );
   const refreshing = sourceStates.some((source) => source.loading);
   const hasSettled = sourceStates.some(
-    (source) =>
-      source.count > 0 || Boolean(source.error) || Boolean(source.fetchedAt),
+    (source) => source.count > 0 || Boolean(source.error) || Boolean(source.fetchedAt),
   );
 
   const errors = sourceStates
-    .flatMap((source) =>
-      source.error ? [`${source.label}: ${source.error}`] : [],
-    )
+    .flatMap((source) => (source.error ? [`${source.label}: ${source.error}`] : []))
     .filter(Boolean);
 
-  const allEvents: IncidentEvent[] = swrSources.flatMap(
-    ({ state }) => state.data?.data ?? [],
-  );
+  const allEvents: IncidentEvent[] = swrSources.flatMap(({ state }) => state.data?.data ?? []);
 
   const fetchedAts = swrSources
     .map(({ state }) => state.data?.fetchedAt)
     .filter(Boolean) as string[];
 
   const lastUpdated =
-    fetchedAts.length > 0
-      ? fetchedAts.reduce((a, b) => (a > b ? a : b))
-      : undefined;
+    fetchedAts.length > 0 ? fetchedAts.reduce((a, b) => (a > b ? a : b)) : undefined;
 
   return {
     events: allEvents,
